@@ -54,8 +54,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCartStore } from '@/store/cartStore'
-import { useAuthStore } from '@/store/authStore'
+import { useCartStore } from '../store/cartStore'
+import { useAuthStore } from '../store/authStore'
 
 const router = useRouter()
 
