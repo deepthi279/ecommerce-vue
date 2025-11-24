@@ -1,6 +1,6 @@
 <script setup>
 import { useRoute } from 'vue-router'
-import { useCartStore } from '../store/cart'
+import { useCartStore } from '../store/cartStore'
 import { products } from '../assets/data/products'
 
 const route = useRoute()

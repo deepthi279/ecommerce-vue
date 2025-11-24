@@ -12,7 +12,7 @@
     </section>
 
     <div class="container mx-auto px-4 py-12">
-      <!-- PLANTS -->
+      <!-- Indoor PLANTS -->
       <h2 class="text-3xl font-bold mb-6 text-green-600">Plants</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">
         <router-link
@@ -99,6 +99,13 @@
           </button>
         </router-link>
       </div>
+      <!-- Responsive grid: 1 column mobile, 2 md, 3 lg -->
+      <div class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ProductCard v-for="product in products" :key="product.id" :product="product"/>
+        </div>
+      </div>
+
 
       <!-- GROW BAGS -->
       <h2 class="text-3xl font-bold mb-6 text-green-600">Grow Bags</h2>

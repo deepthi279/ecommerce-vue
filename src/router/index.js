@@ -1,10 +1,7 @@
-
-
-
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 
-// pages (relative imports; keep the file name exactly "Login.vue")
+// pages
 import Home from '../pages/Home.vue'
 import About from '../pages/About.vue'
 import Shop from '../pages/Shop.vue'
@@ -15,7 +12,7 @@ import Checkout from '../pages/Checkout.vue'
 import Login from '../pages/Login.vue'
 import CreateAccount from '../pages/CreateAccountModal.vue'
 
-// pinia stores used in guards
+// import Pinia stores (DIRECT FILES — not from "../store")
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 
@@ -38,6 +35,7 @@ const routes = [
     name: 'CreateAccount',
     component: CreateAccount,
   },
+  // catch-all redirect for 404
   { path: '/:pathMatch(.*)*', redirect: { name: 'Home' } },
 ]
 
@@ -47,19 +45,21 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
+// route guards
 router.beforeEach((to) => {
-  const auth = useAuthStore()
-  const cart = useCartStore()
-  // allow routes that don't need anything
+  const auth = useAuthStore()     // correct function name!
+  const cart = useCartStore()     // correct function name!
+
+  // allow free routes
   if (!to.meta?.requiresAuth && !to.meta?.requiresCart) return true
 
-  // needs auth?
-  if (to.meta?.requiresAuth && !auth.isAuthed) {
+  // requires login?
+  if (to.meta.requiresAuth && !auth.isAuthed) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
 
-  // needs items?
-  if (to.meta?.requiresCart) {
+  // requires items in cart?
+  if (to.meta.requiresCart) {
     const empty = !cart.items || cart.items.length === 0
     if (empty && to.name !== 'Shop') return { name: 'Shop' }
   }

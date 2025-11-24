@@ -29,6 +29,8 @@
 
           <button class="text-xs underline text-gray-500" @click="signOut" type="button">Sign out</button>
         </div>
+        <input class="w-full p-3 rounded border" placeholder="Full name" />
+        <button class="w-full py-3 mt-4 rounded bg-indigo-600 text-white font-medium">Confirm purchase</button>
 
         <button
           @click="pay"
