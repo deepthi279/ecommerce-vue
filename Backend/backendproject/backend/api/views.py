@@ -1,45 +1,22 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate, get_user_model 
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from .models import *
 from django.core.mail import send_mail
-from rest_framework.response import Response
-from rest_framework import status
 from django.conf import settings
 from .serializers import SignupSerializer, LoginSerializer
 import razorpay
-from rest_framework.permissions import IsAuthenticated
+
+# ✅ new imports
+import os
+import requests
+
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 User = get_user_model()
-
-# @api_view(["POST"])
-# @permission_classes([AllowAny])
-# def signup_view(request):
-#     """
-#     Signup: expects JSON { first_name, last_name, email, password }
-#     Returns: { token, user: { id, first_name, last_name, email } }
-#     """
-#     serializer = SignupSerializer(data=request.data)
-#     if not serializer.is_valid():
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#     user = serializer.save()
-
-#     # create / get token
-#     token, _ = Token.objects.get_or_create(user=user)
-
-#     user_data = {
-#         "id": user.id,
-#         "first_name": user.first_name,
-#         "last_name": user.last_name,
-#         "email": user.email,
-#     }
-
-#     return Response({"token": token.key, "user": user_data}, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
@@ -120,12 +97,8 @@ def login_view(request):
     email = serializer.validated_data["email"]
     password = serializer.validated_data["password"]
 
-    # Authenticate. If your User model uses email as username, ensure authenticate accepts email
     # We created username=email at signup, so authenticate with username=email:
     user = authenticate(request, username=email, password=password)
-
-    # If your AUTHENTICATION uses email field as username_field, you can do:
-    # user = authenticate(request, email=email, password=password)
 
     if user is None:
         return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -157,7 +130,6 @@ def razorpay_create_order(request):
         if amount_paise <= 0:
             return Response({"detail": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ use the initialized client here
         order = client.order.create({
             "amount": amount_paise,
             "currency": "INR",
@@ -178,7 +150,6 @@ def razorpay_create_order(request):
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def razorpay_verify_payment(request):
@@ -194,13 +165,7 @@ def razorpay_verify_payment(request):
         }
         razorpay.Utility.verify_payment_signature(payload)
 
-        # OPTIONAL (recommended):
-        # payment = client.payment.fetch(payload["razorpay_payment_id"])
-        # if payment.get("status") != "captured":
-        #     return Response({"detail": "Payment not captured"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # TODO: mark your local Order as 'paid' using the order/payment IDs here
-        # e.g., Order.objects.filter(razorpay_order_id=payload["razorpay_order_id"]).update(status="paid")
+        # TODO: mark your local Order as 'paid' here
 
         return Response({"status": "ok"})
     except KeyError:
@@ -209,3 +174,74 @@ def razorpay_verify_payment(request):
         return Response({"detail": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ✅ NEW: Google Reviews endpoint
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def google_reviews(request):
+    """
+    Returns Google reviews for Sivaji Nursery via Places API.
+    Response:
+    {
+      "rating": float,
+      "totalRatings": int,
+      "reviews": [
+        { "name", "rating", "text", "date", "profilePhoto" }, ...
+      ]
+    }
+    """
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY")
+    place_id = os.environ.get("GOOGLE_PLACE_ID")
+
+    if not api_key or not place_id:
+        return Response(
+            {"error": "Missing GOOGLE_PLACES_API_KEY or GOOGLE_PLACE_ID"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    url = "https://maps.googleapis.com/maps/api/place/details/json"
+    params = {
+        "place_id": place_id,
+        "fields": "rating,user_ratings_total,reviews",
+        "key": api_key,
+    }
+
+    try:
+        r = requests.get(url, params=params, timeout=5)
+        data = r.json()
+    except Exception as exc:
+        return Response(
+            {"error": "Failed to call Google Places", "detail": str(exc)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    if data.get("status") != "OK":
+        return Response(
+            {"error": "Google Places error", "raw": data},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    result = data.get("result", {})
+    raw_reviews = result.get("reviews", [])
+
+    normalized_reviews = []
+    for rv in raw_reviews:
+        normalized_reviews.append(
+            {
+                "name": rv.get("author_name"),
+                "rating": rv.get("rating"),
+                "text": rv.get("text"),
+                "date": rv.get("relative_time_description"),  # e.g. "2 weeks ago"
+                "profilePhoto": rv.get("profile_photo_url"),
+            }
+        )
+
+    return Response(
+        {
+            "rating": result.get("rating"),
+            "totalRatings": result.get("user_ratings_total"),
+            "reviews": normalized_reviews,
+        },
+        status=status.HTTP_200_OK,
+    )

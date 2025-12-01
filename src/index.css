@@ -1,19 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* smooth background / text transitions when toggling dark mode */
 body {
   transition: background-color 0.4s ease, color 0.4s ease;
-}
-
-body.bg-dark {
-  background-color: #212529 !important;
-  color: #f8f9fa !important;
-}
-
-.navbar .nav-link {
-  color: #198754; /* green */
-}
-
-.navbar .nav-link:hover {
-  text-decoration: underline;
 }

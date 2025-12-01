@@ -1,55 +1,80 @@
 <template>
-  <div class="min-h-screen dark:bg-gray-900 dark:text-white container mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-6">Checkout</h1>
+  <div class="min-h-screen dark:bg-gray-900 dark:text-white">
+    <div class="max-w-5xl mx-auto px-4 py-10 md:py-12">
+      <h1 class="text-3xl font-bold mb-6">Checkout</h1>
 
-    <div v-if="!items.length" class="text-gray-600 dark:text-gray-300">Your cart is empty.</div>
+      <div v-if="!items.length" class="text-gray-600 dark:text-gray-300">
+        Your cart is empty.
+      </div>
 
-    <div v-else class="grid md:grid-cols-3 gap-6">
-      <!-- ORDER SUMMARY -->
-      <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded p-4 shadow">
-        <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
-        <div v-for="it in items" :key="it.id" class="flex justify-between border-b py-2">
-          <div>{{ it.name }} x{{ it.qty || 1 }}</div>
-          <div>₹{{ it.price * (it.qty || 1) }}</div>
+      <div v-else class="grid md:grid-cols-3 gap-6">
+        <!-- ORDER SUMMARY -->
+        <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded p-4 shadow">
+          <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
+          <div
+            v-for="it in items"
+            :key="it.id"
+            class="flex justify-between border-b py-2 text-sm"
+          >
+            <div>{{ it.name }} x{{ it.qty || 1 }}</div>
+            <div>₹{{ it.price * (it.qty || 1) }}</div>
+          </div>
+          <div class="flex justify-between font-bold text-lg pt-4">
+            <span>Total</span>
+            <span>₹{{ total }}</span>
+          </div>
         </div>
-        <div class="flex justify-between font-bold text-lg pt-4">
-          <span>Total</span>
-          <span>₹{{ total }}</span>
+
+        <!-- CUSTOMER + PAY -->
+        <div class="bg-white dark:bg-gray-800 rounded p-4 shadow h-fit">
+          <h2 class="text-lg font-semibold mb-3">Customer Details</h2>
+
+          <div v-if="user" class="mb-4 text-sm space-y-1">
+            <div><b>Name:</b> {{ user.name }}</div>
+            <div><b>Email:</b> {{ user.email }}</div>
+            <div><b>Phone:</b> {{ user.phone }}</div>
+            <button class="text-xs underline text-gray-500 mt-1" @click="signOut" type="button">
+              Sign out
+            </button>
+          </div>
+
+          <div v-else class="mb-3">
+            <p class="text-xs text-gray-500 mb-2">
+              Please login to complete your purchase.
+            </p>
+            <button
+              type="button"
+              @click="goLogin"
+              class="w-full py-2 rounded bg-gray-200 dark:bg-gray-700 text-sm"
+            >
+              Go to Login
+            </button>
+          </div>
+
+          <input
+            class="w-full p-3 rounded border text-sm mt-2 mb-3"
+            placeholder="Full name"
+          />
+
+          <button
+            @click="pay"
+            :disabled="paying || !items.length || !user"
+            class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 rounded text-sm"
+          >
+            {{ paying ? 'Processing…' : `Pay ₹${total}` }}
+          </button>
         </div>
       </div>
 
-      <!-- CUSTOMER + PAY -->
-      <div class="bg-white dark:bg-gray-800 rounded p-4 shadow h-fit">
-        <div class="flex items-center justify-between mb-4"></div>
-
-        <div v-if="user">
-          <div class="text-sm mb-1"><b>Name:</b> {{ user.name }}</div>
-          <div class="text-sm mb-1"><b>Email:</b> {{ user.email }}</div>
-          <div class="text-sm mb-4"><b>Phone:</b> {{ user.phone }}</div>
-
-          <button class="text-xs underline text-gray-500" @click="signOut" type="button">Sign out</button>
-        </div>
-        <input class="w-full p-3 rounded border" placeholder="Full name" />
-        <button class="w-full py-3 mt-4 rounded bg-indigo-600 text-white font-medium">Confirm purchase</button>
-
-        <button
-          @click="pay"
-          :disabled="paying || !items.length || !user"
-          class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 rounded"
+      <transition name="fade">
+        <div
+          v-if="toast.show"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-4 py-2 rounded shadow"
         >
-          {{ paying ? 'Processing…' : `Pay ₹${total}` }}
-        </button>
-      </div>
+          {{ toast.message }}
+        </div>
+      </transition>
     </div>
-
-    <transition name="fade">
-      <div
-        v-if="toast.show"
-        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-4 py-2 rounded shadow"
-      >
-        {{ toast.message }}
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -103,13 +128,12 @@ function loadRazorpay() {
 }
 
 // --- TEMP STUBS so the app builds without a backend ---
-// Replace with real API calls later.
 async function createRazorpayOrder({ amount_paise, receipt, notes }) {
   return {
     order_id: 'order_demo_' + Date.now(),
     amount: amount_paise,
     currency: 'INR',
-    key_id: 'rzp_test_demoKey', // replace with your real key on server side
+    key_id: 'rzp_test_demoKey',
     receipt,
     notes,
   }
@@ -189,12 +213,12 @@ async function pay() {
 </script>
 
 <style>
-.fade-enter-active, .fade-leave-active { transition: opacity .2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
-
-
-
-
-
-
